@@ -131,32 +131,57 @@ def get_dealerships(request, state="All"):
 def get_dealer_reviews(request, dealer_id):
     if dealer_id:
         endpoint = "/fetchReviews/dealer/" + str(dealer_id)
-
         reviews = get_request(endpoint)
 
+        # Safety check
+        if reviews is None:
+            return JsonResponse({"status": 400, "message": "No reviews found or backend error"})
+
         for review_detail in reviews:
-            response = analyze_review_sentiments(
-                review_detail['review']
-            )
+            try:
+                response = analyze_review_sentiments(review_detail['review'])
+                print(response)
+                if response and 'sentiment' in response:
+                    review_detail['sentiment'] = response['sentiment']
+                else:
+                    review_detail['sentiment'] = 'neutral'
+            except Exception as e:
+                print("Sentiment analysis failed:", e)
+                review_detail['sentiment'] = 'neutral'
 
-            print(response)
+        return JsonResponse({"status": 200, "reviews": reviews})
+    else:
+        return JsonResponse({"status": 400, "message": "Bad Request"})
 
-            review_detail['sentiment'] = response['sentiment']
+# def get_dealer_reviews(request, dealer_id):
+#     if dealer_id:
+#         endpoint = "/fetchReviews/dealer/" + str(dealer_id)
 
-        return JsonResponse({
-            "status": 200,
-            "reviews": reviews
-        })
+#         reviews = get_request(endpoint)
 
-    return JsonResponse({
-        "status": 400,
-        "message": "Bad Request"
-    })
+#         for review_detail in reviews:
+#             response = analyze_review_sentiments(
+#                 review_detail['review']
+#             )
+
+#             print(response)
+
+#             review_detail['sentiment'] = response['sentiment']
+
+#         return JsonResponse({
+#             "status": 200,
+#             "reviews": reviews
+#         })
+
+#     return JsonResponse({
+#         "status": 400,
+#         "message": "Bad Request"
+#     })
 
 
-# Create a `get_dealer_details` view to render the dealer details
-# def get_dealer_details(request, dealer_id):
-# ...
+# # Create a `get_dealer_details` view to render the dealer details
+# # def get_dealer_details(request, dealer_id):
+# # ...
 def get_dealer_details(request, dealer_id):
     if dealer_id:
         endpoint = "/fetchDealer/" + str(dealer_id)

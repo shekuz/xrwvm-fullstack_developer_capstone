@@ -37,14 +37,24 @@ def get_request(endpoint, **kwargs):
 # Add code for retrieving sentiments
 def analyze_review_sentiments(text):
     request_url = sentiment_analyzer_url + "analyze/" + text
-
     try:
-        response = requests.get(request_url)
+        response = requests.get(request_url, timeout=10)
         return response.json()
-
     except Exception as err:
-        print(f"Unexpected {err=}, {type(err)=}")
-        print("Network exception occurred")
+        print(f"Sentiment error: {err}")
+        return {'sentiment': 'neutral'}
+
+
+# def analyze_review_sentiments(text):
+#     request_url = sentiment_analyzer_url + "analyze/" + text
+
+#     try:
+#         response = requests.get(request_url)
+#         return response.json()
+
+#     except Exception as err:
+#         print(f"Unexpected {err=}, {type(err)=}")
+#         print("Network exception occurred")
 
 # def post_review(data_dict):
 # Add code for posting review
