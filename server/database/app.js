@@ -12,21 +12,31 @@ app.use(require('body-parser').urlencoded({ extended: false }));
 const reviews_data = JSON.parse(fs.readFileSync("reviews.json", 'utf8'));
 const dealerships_data = JSON.parse(fs.readFileSync("dealerships.json", 'utf8'));
 
-mongoose.connect("mongodb://mongo_db:27017/", { 'dbName': 'dealershipsDB' });
+const mongoUrl = process.env.MONGO_URL || "mongodb://mongo_db:27017/";
+mongoose.connect(mongoUrl, { dbName: "dealershipsDB" });
 
 const Reviews = require('./review');
 const Dealerships = require('./dealership');
 
-try {
-  Reviews.deleteMany({}).then(() => {
-    Reviews.insertMany(reviews_data.reviews);
-  });
-  Dealerships.deleteMany({}).then(() => {
-    Dealerships.insertMany(dealerships_data.dealerships);
-  });
-} catch (error) {
-  console.log("Error while seeding data:", error);
+// Seed a collection only when it is empty, so restarts never wipe data
+async function seed(Model, records, label) {
+  const count = await Model.countDocuments();
+  if (count > 0) {
+    console.log(label + ": " + count + " records exist, skipping seed");
+    return;
+  }
+  await Model.insertMany(records);
+  console.log(label + ": seeded " + records.length + " records");
 }
+
+mongoose.connection.once('open', async () => {
+  try {
+    await seed(Reviews, reviews_data.reviews, "reviews");
+    await seed(Dealerships, dealerships_data.dealerships, "dealerships");
+  } catch (error) {
+    console.log("Error while seeding data:", error);
+  }
+});
 
 // Home route
 app.get('/', async (req, res) => {
@@ -87,7 +97,7 @@ app.get('/fetchDealer/:id', async (req, res) => {
 app.post('/insert_review', express.raw({ type: '*/*' }), async (req, res) => {
   const data = JSON.parse(req.body);
   const documents = await Reviews.find().sort({ id: -1 });
-  const new_id = documents[0].id + 1;
+  const new_id = documents.length > 0 ? documents[0].id + 1 : 1;
 
   const review = new Reviews({
     "id": new_id,

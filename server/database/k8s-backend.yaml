@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-db
+  labels:
+    run: mongo-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      run: mongo-db
+  template:
+    metadata:
+      labels:
+        run: mongo-db
+    spec:
+      containers:
+      - name: mongo-db
+        image: mongo:latest
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: data
+          mountPath: /data/db
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: mongo-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-db
+spec:
+  selector:
+    run: mongo-db
+  ports:
+  - port: 27017
+    targetPort: 27017
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodeapp
+  labels:
+    run: nodeapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: nodeapp
+  template:
+    metadata:
+      labels:
+        run: nodeapp
+    spec:
+      containers:
+      - name: nodeapp
+        image: us.icr.io/sn-labs-shekuprog/nodeapp:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3030
+        env:
+        - name: MONGO_URL
+          value: mongodb://mongo-db:27017/
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodeapp
+spec:
+  selector:
+    run: nodeapp
+  ports:
+  - port: 3030
+    targetPort: 3030
