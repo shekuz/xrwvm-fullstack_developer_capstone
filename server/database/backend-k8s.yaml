@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-db
+  labels:
+    run: mongo-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: mongo-db
+  template:
+    metadata:
+      labels:
+        run: mongo-db
+    spec:
+      containers:
+      - name: mongo-db
+        image: mongo:7.0
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: mongo-data
+          mountPath: /data/db
+      volumes:
+      - name: mongo-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-db
+spec:
+  selector:
+    run: mongo-db
+  ports:
+  - port: 27017
+    targetPort: 27017
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dealership-api
+  labels:
+    run: dealership-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: dealership-api
+  template:
+    metadata:
+      labels:
+        run: dealership-api
+    spec:
+      containers:
+      - name: dealership-api
+        image: us.icr.io/sn-labs-shekuprog/dealership-api:latest
+        imagePullPolicy: Always
+        env:
+        - name: MONGO_URL
+          value: "mongodb://mongo-db:27017/"
+        ports:
+        - containerPort: 3030
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dealership-api
+spec:
+  selector:
+    run: dealership-api
+  ports:
+  - port: 3030
+    targetPort: 3030
